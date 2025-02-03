@@ -1,10 +1,13 @@
 {
   "name": "mcp-server",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "mcp server",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "mcp-server": "bin/server.js"
   },
   "repository": {
     "type": "git",
@@ -18,5 +21,10 @@
   "bugs": {
     "url": "https://github.com/sandy-mount/mcp-server/issues"
   },
-  "homepage": "https://github.com/sandy-mount/mcp-server#readme"
+  "homepage": "https://github.com/sandy-mount/mcp-server#readme",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
 }
