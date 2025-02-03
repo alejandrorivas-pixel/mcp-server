@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 
-// server.js
-const express = require('express');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath, URL } from 'url';
+
+// Helper to determine __dirname in ES modules.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
-// Enable CORS and JSON parsing middleware
+// Enable CORS and JSON parsing middleware.
 app.use(cors());
 app.use(express.json());
 
-// Helper function to create a JSON-RPC response
+// Helper functions for JSON-RPC responses.
 function createResponse (id, result) {
   return {
     jsonrpc: "2.0",
@@ -18,7 +25,6 @@ function createResponse (id, result) {
   };
 }
 
-// Helper function to create a JSON-RPC error response
 function createErrorResponse (id, code, message) {
   return {
     jsonrpc: "2.0",
@@ -30,41 +36,79 @@ function createErrorResponse (id, code, message) {
   };
 }
 
-// Handle POST requests to the root endpoint
-app.post('/', (req, res) => {
+// Load all plugins from the plugins folder.
+const plugins = new Map();
+const pluginsDir = new URL('../plugins/', import.meta.url);
+try {
+  const files = await fs.readdir(pluginsDir);
+  for (const file of files) {
+    if (file.endsWith('.js')) {
+      // Create the URL to the plugin file.
+      const moduleUrl = new URL(file, pluginsDir);
+      const plugin = await import(moduleUrl.href);
+      if (plugin.method && typeof plugin.handler === 'function') {
+        plugins.set(plugin.method, plugin);
+        console.log(`Loaded plugin: ${plugin.method}`);
+      } else {
+        console.warn(`Skipping plugin file ${file} (missing 'method' or 'handler')`);
+      }
+    }
+  }
+} catch (err) {
+  console.error("Error loading plugins:", err);
+}
+
+// Handle POST requests to the root endpoint.
+app.post('/', async (req, res) => {
   try {
     const message = req.body;
     console.log("Received message:", message);
 
-    // Validate JSON-RPC request
+    // Validate JSON-RPC request.
     if (!message.jsonrpc || message.jsonrpc !== "2.0") {
       return res.json(createErrorResponse(message.id, -32600, "Invalid JSON-RPC request"));
     }
-
     if (!message.method) {
       return res.json(createErrorResponse(message.id, -32600, "Method is required"));
     }
 
-    // Handle the "initialize" method
+    // Special handling for the "initialize" method:
+    // List available capabilities from the loaded plugins.
     if (message.method === "initialize") {
+      const capabilities = {};
+      plugins.forEach((plugin, method) => {
+        if (plugin.capability) {
+          capabilities[method] = plugin.capability;
+        }
+      });
       const response = {
-        capabilities: {
-          tools: { echo: { description: "Echo tool" } }
-        },
+        capabilities,
         serverInfo: {
-          name: "Simple MCP Server",
+          name: "Pluggable MCP Server",
           version: "1.0.0"
         }
       };
-      res.json(createResponse(message.id, response));
+      return res.json(createResponse(message.id, response));
     }
-    // Handle the "echo" method
-    else if (message.method === "echo") {
-      res.json(createResponse(message.id, { echoed: message.params }));
+
+    // Lookup the plugin for the requested method.
+    const plugin = plugins.get(message.method);
+    if (!plugin) {
+      return res.json(createErrorResponse(message.id, -32601, "Method not found"));
     }
-    // If method not found, send an error response
-    else {
-      res.json(createErrorResponse(message.id, -32601, "Method not found"));
+
+    // Execute the plugin's handler.
+    // The handler may be synchronous or return a Promise.
+    const result = plugin.handler(message.params);
+    if (result instanceof Promise) {
+      result
+        .then(r => res.json(createResponse(message.id, r)))
+        .catch(err => {
+          console.error("Error processing method:", err);
+          res.status(500).json(createErrorResponse(message.id, -32603, "Internal server error"));
+        });
+    } else {
+      res.json(createResponse(message.id, result));
     }
   } catch (err) {
     console.error("Error processing request:", err);
@@ -72,9 +116,8 @@ app.post('/', (req, res) => {
   }
 });
 
-// Listen on port 4333
+// Listen on port 4333.
 const PORT = process.env.PORT || 4333;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
