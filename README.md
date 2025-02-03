@@ -12,6 +12,14 @@ A simple JSON-RPC 2.0 server implementing the Model-Client-Protocol (MCP). This 
 - Built-in echo tool
 - Simple initialization protocol
 
+## Quick Start
+
+```bash
+npx mcp-server
+```
+
+Will run the server on port 4333
+
 ## Installation
 
 ```bash

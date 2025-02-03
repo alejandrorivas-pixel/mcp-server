@@ -72,8 +72,8 @@ app.post('/', (req, res) => {
   }
 });
 
-// Listen on port 4000
-const PORT = process.env.PORT || 4000;
+// Listen on port 4333
+const PORT = process.env.PORT || 4333;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
