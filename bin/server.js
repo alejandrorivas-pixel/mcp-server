@@ -74,7 +74,7 @@ app.post('/', (req, res) => {
 
 // Listen on port 4333
 const PORT = process.env.PORT || 4333;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${PORT}`);
 });
 
