@@ -36,22 +36,37 @@ function createErrorResponse (id, code, message) {
   };
 }
 
-// Load all plugins from the plugins folder.
+// Load all plugins from both the plugins and private-plugins folders.
 const plugins = new Map();
-const pluginsDir = new URL('../plugins/', import.meta.url);
+const pluginDirs = [
+  new URL('../plugins/', import.meta.url),
+  new URL('../private-plugins/', import.meta.url)
+];
+
 try {
-  const files = await fs.readdir(pluginsDir);
-  for (const file of files) {
-    if (file.endsWith('.js')) {
-      // Create the URL to the plugin file.
-      const moduleUrl = new URL(file, pluginsDir);
-      const plugin = await import(moduleUrl.href);
-      if (plugin.method && typeof plugin.handler === 'function') {
-        plugins.set(plugin.method, plugin);
-        console.log(`Loaded plugin: ${plugin.method}`);
-      } else {
-        console.warn(`Skipping plugin file ${file} (missing 'method' or 'handler')`);
+  for (const pluginsDir of pluginDirs) {
+    try {
+      const files = await fs.readdir(pluginsDir);
+      for (const file of files) {
+        if (file.endsWith('.js')) {
+          // Create the URL to the plugin file.
+          const moduleUrl = new URL(file, pluginsDir);
+          const plugin = await import(moduleUrl.href);
+          if (plugin.method && typeof plugin.handler === 'function') {
+            plugins.set(plugin.method, plugin);
+            console.log(`Loaded plugin: ${plugin.method}`);
+          } else {
+            console.warn(`Skipping plugin file ${file} (missing 'method' or 'handler')`);
+          }
+        }
       }
+    } catch (err) {
+      // If directory doesn't exist, just continue
+      if (err.code === 'ENOENT') {
+        console.log(`Optional plugin directory not found: ${pluginsDir}`);
+        continue;
+      }
+      throw err;
     }
   }
 } catch (err) {
