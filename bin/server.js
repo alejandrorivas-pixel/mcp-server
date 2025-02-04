@@ -49,14 +49,31 @@ try {
       const files = await fs.readdir(pluginsDir);
       for (const file of files) {
         if (file.endsWith('.js')) {
-          // Create the URL to the plugin file.
           const moduleUrl = new URL(file, pluginsDir);
           const plugin = await import(moduleUrl.href);
-          if (plugin.method && typeof plugin.handler === 'function') {
-            plugins.set(plugin.method, plugin);
-            console.log(`Loaded plugin: ${plugin.method}`);
+          if (typeof plugin.tool === 'function') {
+            const toolConfig = plugin.tool();
+            plugins.set(toolConfig.name, {
+              handler: toolConfig.fn,
+              capability: {
+                description: toolConfig.description,
+                params: {
+                  type: "object",
+                  properties: Object.fromEntries(
+                    toolConfig.inputs?.map(input => [
+                      input.name,
+                      {
+                        type: input.type,
+                        description: input.description
+                      }
+                    ]) || []
+                  )
+                }
+              }
+            });
+            console.log(`Loaded plugin: ${toolConfig.name}`);
           } else {
-            console.warn(`Skipping plugin file ${file} (missing 'method' or 'handler')`);
+            console.warn(`Skipping plugin file ${file} (missing 'tool' function)`);
           }
         }
       }
@@ -114,17 +131,8 @@ app.post('/', async (req, res) => {
 
     // Execute the plugin's handler.
     // The handler may be synchronous or return a Promise.
-    const result = plugin.handler(message.params);
-    if (result instanceof Promise) {
-      result
-        .then(r => res.json(createResponse(message.id, r)))
-        .catch(err => {
-          console.error("Error processing method:", err);
-          res.status(500).json(createErrorResponse(message.id, -32603, "Internal server error"));
-        });
-    } else {
-      res.json(createResponse(message.id, result));
-    }
+    const result = await plugin.handler(message.params);
+    res.json(createResponse(message.id, result));
   } catch (err) {
     console.error("Error processing request:", err);
     res.status(500).json(createErrorResponse(null, -32603, "Internal server error"));

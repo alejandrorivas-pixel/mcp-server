@@ -1,22 +1,21 @@
-export const method = 'helloworld';
-
-export const capability = {
-  description: "Returns a hello world message",
-  params: {
-    type: "object",
-    properties: {
-      name: {
+export function tool () {
+  return {
+    name: "helloworld",
+    description: "Returns a hello world message",
+    inputs: [
+      {
+        name: "name",
         type: "string",
-        description: "Name to greet (optional)",
+        description: "Name to greet",
+        required: false,
         default: "World"
       }
+    ],
+    fn: async (params) => {
+      const name = typeof params === 'object' ? params.name || "World" : params;
+      return {
+        message: `Hello, ${name}!`
+      };
     }
-  }
-};
-
-export function handler (params = {}) {
-  const name = params.name || "World";
-  return {
-    message: `Hello, ${name}!`
   };
 } 
