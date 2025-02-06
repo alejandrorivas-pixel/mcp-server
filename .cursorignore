@@ -1,0 +1,20 @@
+# Temporary files and directories
+/tmp/
+/temp/
+*.tmp
+*.temp
+*.cache
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Node related
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Build outputs
+/dist/
+/build/ 

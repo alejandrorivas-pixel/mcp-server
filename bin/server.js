@@ -139,8 +139,10 @@ app.post('/', async (req, res) => {
   }
 });
 
+const DEFAULT_PORT = 4333;
+
 // Listen on port 4333.
-const PORT = process.env.PORT || 4333;
+const PORT = process.env.PORT || DEFAULT_PORT;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${PORT}`);
 });
